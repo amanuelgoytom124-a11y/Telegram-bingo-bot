@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hip Games</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #b193cf; color: #fff; margin: 0; padding: 12px; padding-bottom: 80px; display: flex; flex-direction: column; align-items: center; box-sizing: border-box; }
+        
+        .view-screen { width: 100%; max-width: 420px; box-sizing: border-box; }
+        
+        h2 { text-align: center; margin: 5px 0 15px 0; font-size: 1.4rem; font-weight: bold; text-transform: uppercase; color: #ffffff; letter-spacing: 0.5px; }
+
+        /* Screen Toggle Utilities */
+        .page-view { display: none; width: 100%; }
+        .page-view.active { display: block; }
+
+        /* 1-100 Number Matrix Grid Area */
+        .matrix-container { width: 100%; display: grid; grid-template-columns: repeat(10, 1fr); gap: 6px; background: rgba(255, 255, 255, 0.15); padding: 10px; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 20px; box-sizing: border-box; }
+        .matrix-cell { background: rgba(255, 255, 255, 0.5); border-radius: 8px; font-size: 0.95rem; font-weight: bold; padding: 10px 0; text-align: center; color: #401f66; cursor: pointer; user-select: none; transition: background 0.2s, color 0.2s; }
+        .matrix-cell.selected { background: #28a745 !important; color: #ffffff !important; font-weight: 900; }
+
+        /* Workspace Controls Stack Grid */
+        .workspace-deck { display: flex; width: 100%; justify-content: space-between; align-items: flex-start; gap: 15px; box-sizing: border-box; }
+        .cards-preview-lane { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 100px; }
+        .buttons-column { flex: 1; display: flex; flex-direction: column; gap: 12px; }
+
+        /* Bingo Card Blocks styling */
+        .bingo-mini-card { background: rgba(255, 255, 255, 0.25); border-radius: 12px; padding: 12px; box-shadow: 0 4px 8px rgba(0,0,0,0.05); width: 100%; box-sizing: border-box; }
+        .card-tag { text-align: center; font-size: 0.85rem; font-weight: bold; color: #f39c12; margin-bottom: 8px; text-transform: uppercase; }
+        
+        /* B-I-N-G-O Grid Display Headers */
+        .bingo-headers { display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px; text-align: center; margin-bottom: 6px; }
+        .header-letter { font-weight: 900; font-size: 0.9rem; color: #ffffff; background: rgba(0,0,0,0.2); padding: 4px 0; border-radius: 4px; }
+
+        .grid-5x5 { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; text-align: center; }
+        .cell-unit { color: #2c3e50; font-size: 0.85rem; font-weight: bold; padding: 8px 0; background: rgba(255,255,255,0.4); border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+        .cell-unit.free-space { color: #e74c3c; font-size: 1rem; font-weight: 900; background: rgba(255,255,255,0.6); }
+        
+        /* Interactive Daubing/Marking State */
+        .cell-unit.marked { background: #e67e22 !important; color: #fff !important; transform: scale(0.95); box-shadow: inset 0 2px 5px rgba(0,0,0,0.2); }
+
+        /* Live Draw Dashboard Panels */
+        .live-draw-banner { background: rgba(0, 0, 0, 0.2); border-radius: 16px; padding: 15px; text-align: center; margin-bottom: 20px; }
+        .current-ball { width: 70px; height: 70px; background: #fff; color: #2c3e50; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; font-weight: 900; margin: 10px auto; box-shadow: 0 4px 10px rgba(0,0,0,0.15); border: 3px solid #e67e22; transition: all 0.3s; }
+        .current-ball.waiting { border-color: #3498db; color: #3498db; font-size: 1.4rem; }
+        .recent-draws-row { display: flex; justify-content: center; gap: 8px; font-size: 0.8rem; opacity: 0.8; margin-top: 5px; min-height: 16px; }
+
+        /* Interface buttons styling */
+        .action-btn { border: none; border-radius: 24px; padding: 14px 0; font-weight: bold; font-size: 1rem; cursor: pointer; color: white; box-shadow: 0 4px 10px rgba(0,0,0,0.12); text-align: center; width: 100%; display: block; text-decoration: none; }
+        .btn-blue { background: #3498db; }
+        .btn-orange { background: #e67e22; }
+        .btn-green { background: #28a745; margin-top: 20px; padding: 18px 0; font-size: 1.2rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        /* Persistent Navigation Deck Styles */
+        .bottom-nav-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #ffffff; height: 60px; display: flex; justify-content: space-around; align-items: center; box-shadow: 0 -4px 12px rgba(0,0,0,0.05); border-top-left-radius: 16px; border-top-right-radius: 16px; z-index: 5000; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #95a5a6; cursor: pointer; font-size: 0.75rem; flex: 1; text-decoration: none; }
+        .nav-item i { font-size: 1.2rem; margin-bottom: 4px; }
+        .nav-item.active { color: #8e44ad; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div class="view-screen">
+        
+        <div id="view-selection" class="page-view active">
+            <h2>🎰 Select Your Boards</h2>
+            <div class="matrix-container" id="matrix-grid-housing"></div>
+            <div class="workspace-deck">
+                <div class="cards-preview-lane" id="preview-cards-container"></div>
+                <div class="buttons-column">
+                    <button class="action-btn btn-blue" onclick="clearBoardSelection()">Refresh</button>
+                    <button class="action-btn btn-orange" onclick="switchToGameplayScreen()">🚀 Join Game</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-gameplay" class="page-view">
+            <h2>🔴 Live Drawing Match</h2>
+            
+            <div class="live-draw-banner">
+                <div id="draw-label-heading" style="font-size: 0.85rem; text-transform: uppercase; opacity: 0.9;">Match Starting In</div>
+                <div class="current-ball waiting" id="live-ball-display">30s</div>
+                <div id="draw-status-text" style="font-weight: bold; font-size: 0.9rem; color: #3498db;">Waiting for other players...</div>
+                <div class="recent-draws-row" id="history-balls-row"></div>
+            </div>
+
+            <div id="gameplay-board-housing"></div>
+
+            <button class="action-btn btn-green" onclick="claimBingoWin()">🎉 BINGO!</button>
+        </div>
+
+    </div>
+
+    <div class="bottom-nav-bar">
+        <div class="nav-item active" onclick="location.reload()"><i class="fas fa-gamepad"></i>Game</div>
+        <div class="nav-item"><i class="fas fa-medal"></i>Scores</div>
+        <div class="nav-item"><i class="fas fa-history"></i>History</div>
+        <div class="nav-item"><i class="fas fa-wallet"></i>Wallet</div>
+        <div class="nav-item"><i class="fas fa-user"></i>Profile</div>
+    </div>
+
+    <script>
+        const cardsDataMap = {};
+        let currentSelectedNumber = null;
+        let gameDrawInterval = null;
+        let lobbyTimerInterval = null;
+        let drawnNumbersPool = [];
+
+        // Custom seeded random number generator
+        function seedRandomGenerator(seed) {
+            return function() {
+                let x = Math.sin(seed++) * 10000;
+                return x - Math.floor(x);
+            };
+        }
+
+        function generateUniqueCard(cardNumber) {
+            let rand = seedRandomGenerator(cardNumber * 5321); 
+            let columnRanges = [
+                { min: 1, max: 15 }, { min: 16, max: 30 }, { min: 31, max: 45 }, { min: 46, max: 60 }, { min: 61, max: 75 }
+            ];
+            let cardMatrix = [];
+
+            columnRanges.forEach((range) => {
+                let availableNumbers = [];
+                for (let i = range.min; i <= range.max; i++) availableNumbers.push(i);
+                for (let i = availableNumbers.length - 1; i > 0; i--) {
+                    let j = Math.floor(rand() * (i + 1));
+                    [availableNumbers[i], availableNumbers[j]] = [availableNumbers[j], availableNumbers[i]];
+                }
+                let columnSelection = availableNumbers.slice(0, 5).sort((a, b) => a - b);
+                cardMatrix.push(columnSelection);
+            });
+
+            cardMatrix[2][2] = "*";
+            return cardMatrix;
+        }
+
+        function initCardsDataPool() {
+            for (let b = 1; b <= 100; b++) {
+                cardsDataMap[b] = generateUniqueCard(b);
+            }
+        }
+
+        function createNumberMatrixSystem() {
+            const gridContainer = document.getElementById('matrix-grid-housing');
+            gridContainer.innerHTML = '';
+            for (let i = 1; i <= 100; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'matrix-cell';
+                cell.id = `matrix-cell-${i}`;
+                cell.innerText = i;
+                cell.onclick = function() { handleCellTapAction(i); };
+                gridContainer.appendChild(cell);
+            }
+        }
+
+        function handleCellTapAction(num) {
+            const previewLane = document.getElementById('preview-cards-container');
+            if (currentSelectedNumber === num) {
+                clearBoardSelection();
+                return;
+            }
+            if (currentSelectedNumber !== null) {
+                const oldCell = document.getElementById(`matrix-cell-${currentSelectedNumber}`);
+                if (oldCell) oldCell.classList.remove('selected');
+            }
+            currentSelectedNumber = num;
+            const targetCell = document.getElementById(`matrix-cell-${num}`);
+            if (targetCell) targetCell.classList.add('selected');
+
+            previewLane.innerHTML = '';
+            const cardMarkup = renderMiniCardElement(num, `preview-card-card-${num}`, false);
+            previewLane.appendChild(cardMarkup);
+        }
+
+        function renderMiniCardElement(cardNumber, targetId, isInteractive) {
+            const containerNode = document.createElement('div');
+            containerNode.className = 'bingo-mini-card';
+            containerNode.id = targetId;
+
+            const cardHeader = document.createElement('div');
+            cardHeader.className = 'card-tag';
+            cardHeader.innerText = `BOARD #${cardNumber}`;
+            containerNode.appendChild(cardHeader);
+
+            const lettersHeader = document.createElement('div');
+            lettersHeader.className = 'bingo-headers';
+            ['B','I','N','G','O'].forEach(letter => {
+                const item = document.createElement('div');
+                item.className = 'header-letter';
+                item.innerText = letter;
+                lettersHeader.appendChild(item);
+            });
+            containerNode.appendChild(lettersHeader);
+
+            const cellsContainer = document.createElement('div');
+            cellsContainer.className = 'grid-5x5';
+
+            const layoutMatrix = cardsDataMap[cardNumber];
+            for (let row = 0; row < 5; row++) {
+                for (let col = 0; col < 5; col++) {
+                    const unitValue = layoutMatrix[col][row];
+                    const cellUnit = document.createElement('div');
+                    
+                    if (unitValue === "*") {
+                        cellUnit.className = 'cell-unit free-space marked';
+                        cellUnit.innerText = "★";
+                    } else {
+                        cellUnit.className = 'cell-unit';
+                        cellUnit.innerText = unitValue;
+                        if (isInteractive) {
+                            cellUnit.onclick = function() {
+                                cellUnit.classList.toggle('marked');
+                            };
+                        }
+                    }
+                    cellsContainer.appendChild(cellUnit);
+                }
+            }
+            containerNode.appendChild(cellsContainer);
+            return containerNode;
+        }
+
+        function clearBoardSelection() {
+            document.getElementById('preview-cards-container').innerHTML = '';
+            document.querySelectorAll('.matrix-cell').forEach(el => el.classList.remove('selected'));
+            currentSelectedNumber = null;
+        }
+
+        function switchToGameplayScreen() {
+            if (currentSelectedNumber === null) {
+                alert('Please pick a board number from the matrix first!');
+                return;
+            }
+            document.getElementById('view-selection').classList.remove('active');
+            document.getElementById('view-gameplay').classList.add('active');
+
+            const tableHousing = document.getElementById('gameplay-board-housing');
+            tableHousing.innerHTML = '';
+            tableHousing.appendChild(renderMiniCardElement(currentSelectedNumber, 'active-match-card', true));
+
+            // Start the 30 Seconds Pre-Game Lobby Counter!
+            startLobbyCountdown();
+        }
+
+        function startLobbyCountdown() {
+            let secondsLeft = 30;
+            const ballDisplay = document.getElementById('live-ball-display');
+            const statusText = document.getElementById('draw-status-text');
+
+            ballDisplay.innerText = `${secondsLeft}s`;
+            ballDisplay.className = "current-ball waiting";
+            statusText.innerText = "Lobby active. Waiting for players...";
+            statusText.style.color = "#3498db";
+
+            lobbyTimerInterval = setInterval(() => {
+                secondsLeft--;
+                ballDisplay.innerText = `${secondsLeft}s`;
+
+                if (secondsLeft <= 0) {
+                    clearInterval(lobbyTimerInterval);
+                    
+                    // Switch interface status styles back to Active Gameplay mode
+                    ballDisplay.className = "current-ball";
+                    ballDisplay.style.borderColor = "#e67e22";
+                    ballDisplay.style.color = "#2c3e50";
+                    document.getElementById('draw-label-heading').innerText = "Now Drawing";
+                    statusText.innerText = "Game Started! Keep matching!";
+                    statusText.style.color = "#ffffff";
+                    
+                    // Trigger the actual number-pulling engine
+                    startLiveDrawingSimulation();
+                }
+            }, 1000);
+        }
+
+        function startLiveDrawingSimulation() {
+            let possibleNumbers = [];
+            for (let i = 1; i <= 75; i++) possibleNumbers.push(i);
+            
+            for (let i = possibleNumbers.length - 1; i > 0; i--) {
+                let j = Math.floor(Math.random() * (i + 1));
+                [possibleNumbers[i], possibleNumbers[j]] = [possibleNumbers[j], possibleNumbers[i]];
+            }
+
+            let ballIndex = 0;
+            drawnNumbersPool = [];
+
+            gameDrawInterval = setInterval(() => {
+                if (ballIndex >= possibleNumbers.length) {
+                    clearInterval(gameDrawInterval);
+                    document.getElementById('draw-status-text').innerText = "All balls drawn!";
+                    return;
+                }
+
+                let currentNum = possibleNumbers[ballIndex];
+                drawnNumbersPool.push(currentNum);
+                
+                let prefix = 'B';
+                if (currentNum >= 16 && currentNum <= 30) prefix = 'I';
+                else if (currentNum >= 31 && currentNum <= 45) prefix = 'N';
+                else if (currentNum >= 46 && currentNum <= 60) prefix = 'G';
+                else if (currentNum >= 61 && currentNum <= 75) prefix = 'O';
+
+                document.getElementById('live-ball-display').innerText = `${prefix}-${currentNum}`;
+                
+                const historyRow = document.getElementById('history-balls-row');
+                let displayedHistory = [...drawnNumbersPool].reverse().slice(1, 6);
+                historyRow.innerHTML = displayedHistory.map(n => `<span>${n}</span>`).join(' | ');
+
+                ballIndex++;
+            }, 4000);
+        }
+
+        function checkBallMatch(val) {
+            if (val === "*") return true;
+            return drawnNumbersPool.includes(Number(val));
+        }
+
+        function claimBingoWin() {
+            // Check if game has actually started drawing
+            if (drawnNumbersPool.length === 0) {
+                alert("❌ The game hasn't started drawing numbers yet! Wait for the countdown to hit 0s.");
+                return;
+            }
+
+            const matrix = cardsDataMap[currentSelectedNumber];
+            let isWinner = false;
+            let winningReason = "";
+
+            // 1. Check Rows
+            for (let r = 0; r < 5; r++) {
+                if (checkBallMatch(matrix[0][r]) && checkBallMatch(matrix[1][r]) && 
+                    checkBallMatch(matrix[2][r]) && checkBallMatch(matrix[3][r]) && 
+                    checkBallMatch(matrix[4][r])) {
+                    isWinner = true;
+                    winningReason = `Row ${r + 1} is completely filled!`;
+                    break;
+                }
+            }
+
+            // 2. Check Columns
+            if (!isWinner) {
+                for (let c = 0; c < 5; c++) {
+                    if (checkBallMatch(matrix[c][0]) && checkBallMatch(matrix[c][1]) && 
+                        checkBallMatch(matrix[c][2]) && checkBallMatch(matrix[c][3]) && 
+                        checkBallMatch(matrix[c][4])) {
+                        isWinner = true;
+                        winningReason = `Column ${['B','I','N','G','O'][c]} is completely filled!`;
+                        break;
+                    }
+                }
+            }
+
+            // 3. Check Diagonals
+            if (!isWinner) {
+                if (checkBallMatch(matrix[0][0]) && checkBallMatch(matrix[1][1]) && 
+                    checkBallMatch(matrix[2][2]) && checkBallMatch(matrix[3][3]) && 
+                    checkBallMatch(matrix[4][4])) {
+                    isWinner = true;
+                    winningReason = "Main diagonal (Top-Left to Bottom-Right) is complete!";
+                }
+            }
+            if (!isWinner) {
+                if (checkBallMatch(matrix[4][0]) && checkBallMatch(matrix[3][1]) && 
+                    checkBallMatch(matrix[2][2]) && checkBallMatch(matrix[1][3]) && 
+                    checkBallMatch(matrix[0][4])) {
+                    isWinner = true;
+                    winningReason = "Reverse diagonal (Top-Right to Bottom-Left) is complete!";
+                }
+            }
+
+            // 4. Check Edge Numbers (Four Corners)
+            if (!isWinner) {
+                if (checkBallMatch(matrix[0][0]) && checkBallMatch(matrix[4][0]) && 
+                    checkBallMatch(matrix[0][4]) && checkBallMatch(matrix[4][4])) {
+                    isWinner = true;
+                    winningReason = "Edge numbers configuration matched successfully (All Four Corners)!";
+                }
+            }
+
+            if (isWinner) {
+                clearInterval(gameDrawInterval);
+                alert(`🎉 VALID BINGO! 🎉\n\nCongratulations! You won!\nReason: ${winningReason}`);
+                location.reload();
+            } else {
+                alert(`❌ FALSE BINGO! ❌\n\nYour board numbers do not match a winning pattern yet. Keep watching the numbers draw!`);
+            }
+        }
+
+        initCardsDataPool();
+        createNumberMatrixSystem();
+    </script>
+</body>
+</html>
