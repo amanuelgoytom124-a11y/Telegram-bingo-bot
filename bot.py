@@ -25,8 +25,44 @@ async def verify_telegram_handshake():
         print("\n⚠️  [Network Notice]: Telegram handshake took too long to respond.")
         print("👉 Local server will remain ONLINE so you can test your game layout locally.")
         print(f"👉 Error Details: {network_error}\n")
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-if __name__ == '__main__':
+@bot.message_handler(commands=['start', 'menu'])
+async def send_welcome(message):
+    welcome_text = "Welcome to Hip Games! Choose an option from the main menu below to manage your account or play:"
+    
+    markup = InlineKeyboardMarkup(row_width=2)
+    btn_play = InlineKeyboardButton("🎮 Play Bingo", callback_data="cmd_play")
+    btn_balance = InlineKeyboardButton("💰 Check Balance", callback_data="cmd_balance")
+    btn_deposit = InlineKeyboardButton("💳 Deposit Funds", callback_data="cmd_deposit")
+    btn_withdraw = InlineKeyboardButton("🏦 Withdraw Cash", callback_data="cmd_withdraw")
+    btn_help = InlineKeyboardButton("❓ Help & Rules", callback_data="cmd_help")
+    
+    markup.add(btn_play)
+    markup.add(btn_balance, btn_deposit)
+    markup.add(btn_withdraw, btn_help)
+    
+    await bot.send_message(message.chat.id, welcome_text, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('cmd_'))
+async def handle_menu_clicks(call):
+    if call.data == "cmd_play":
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(call.message.chat.id, "Opening your Bingo Board... Use /play if it doesn't pop up instantly.")
+    elif call.data == "cmd_balance":
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(call.message.chat.id, "💰 Your current balance is: 0.00 ETB")
+    elif call.data == "cmd_deposit":
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(call.message.chat.id, "💳 Please enter the amount you want to deposit.")
+    elif call.data == "cmd_withdraw":
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(call.message.chat.id, "🏦 Enter your withdrawal details.")
+    elif call.data == "cmd_help":
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(call.message.chat.id, "❓ Rules: Match numbers on your grid to claim a Bingo row victory!")
+
+ if __name__ == '__main__':
     try:
         loop = asyncio.get_event_loop()
     except RuntimeError:
