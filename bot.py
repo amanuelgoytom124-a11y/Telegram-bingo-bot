@@ -73,3 +73,54 @@ async def handle_menu_clicks(call):
     
     # Run the server locally on all internal network paths
     app.run(host='0.0.0.0', port=5000, debug=True, use_reloader=False)
+from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
+
+@bot.message_handler(commands=['start'])
+async def send_welcome(message):
+    # Professional introduction text guiding them on what to do next
+    intro_text = (
+        "👋 **Welcome to Hip Games!**\n\n"
+        "Your ultimate mobile gaming platform. To get started and begin winning, "
+        "please choose one of the options below to set up your account, fund your wallet, "
+        "or invite your friends to play!"
+    )
+    
+    # Create the clean, easy-to-tap button menu layout
+    markup = InlineKeyboardMarkup(row_width=1)
+    
+    btn_register = InlineKeyboardButton("📝 Register Account", callback_data="menu_register")
+    btn_deposit = InlineKeyboardButton("💳 Deposit Funds", callback_data="menu_deposit")
+    btn_invite = InlineKeyboardButton("👥 Invite Friends", callback_data="menu_invite")
+    
+    # Adding them vertically for perfect mobile rendering
+    markup.add(btn_register, btn_deposit, btn_invite)
+    
+    await bot.send_message(
+        message.chat.id, 
+        intro_text, 
+        reply_markup=markup, 
+        parse_mode="Markdown"
+    @bot.callback_query_handler(func=lambda call: call.data.startswith('menu_'))
+async def handle_intro_menu(call):
+    if call.data == "menu_register":
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id, 
+            "📝 **Registration Portal**\n\nPlease reply with your full name to begin setting up your player profile."
+        )
+        
+    elif call.data == "menu_deposit":
+        await bot.answer_callback_query(call.id)
+        await bot.send_message(
+            call.message.chat.id, 
+            "💳 **Deposit Options**\n\nWe support local mobile banking transfer options. Enter the amount you wish to add to your gaming balance."
+        )
+        
+    elif call.data == "menu_invite":
+        await bot.answer_callback_query(call.id)
+        invite_link = f"https://t.me/Hipgamesbot?start=ref_{call.message.chat.id}"
+        await bot.send_message(
+            call.message.chat.id, 
+            "👥 **Referral System**\n\nShare your unique link below with your friends. You will earn bonus tokens for every active player you bring in!\n\n" + invite_link
+        )
+
