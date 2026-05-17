@@ -8,10 +8,8 @@ app = Flask(__name__)
 BOT_TOKEN = os.getenv("BOT_TOKEN", "7901007823:AAE1bZ5f7G7bXbZf_z8vX-7X2y4Z5t7W3XQ")
 bot = telebot.TeleBot(BOT_TOKEN)
 
-# In-memory user session state tracking
 user_sessions = {}
 
-# Payment Configurations
 PAYMENT_METHODS = {
     "telebirr": {"name": "Telebirr", "details": "📱 Telebirr: `0930919830`\n👤 Name: Amanuel Goytom"},
     "mpesa": {"name": "M-Pesa", "details": "📲 M-Pesa: `0721569830`\n👤 Name: Amanuel Goytom"},
@@ -33,6 +31,8 @@ def get_main_menu_markup():
     )
     return markup
 
+# --- COMMANDS CONTROLLERS ---
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     if message.chat.id in user_sessions:
@@ -49,9 +49,12 @@ def send_welcome(message):
 def deposit_command_handler(message):
     start_deposit_flow(message.chat.id)
 
+# Forces direct command navigation for /play or /bingo
 @bot.message_handler(commands=['bingo', 'play'])
 def bingo_command_handler(message):
     start_bingo_flow(message.chat.id)
+
+# --- INLINE BUTTONS CONTROLLERS ---
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('menu_'))
 def handle_intro_menu(call):
@@ -61,18 +64,15 @@ def handle_intro_menu(call):
     if call.data == "menu_register":
         user_sessions[chat_id] = {"state": "AWAITING_NAME", "name": ""}
         bot.send_message(chat_id, "📝 **Registration Portal**\n\nPlease reply directly to this message with your full name to begin setting up your player profile.")
-        
     elif call.data == "menu_deposit":
         start_deposit_flow(chat_id)
-        
     elif call.data == "menu_bingo":
         start_bingo_flow(chat_id)
-        
     elif call.data == "menu_invite":
         invite_link = f"https://t.me/Hipgamesbot?start=ref_{chat_id}"
         bot.send_message(chat_id, f"👥 **Referral System**\n\nShare your link to earn bonuses:\n{invite_link}")
 
-# --- DEPOSIT FLOW MECHANICS ---
+# --- DEPOSIT SYSTEM ---
 def start_deposit_flow(chat_id):
     user_sessions[chat_id] = {"state": "AWAITING_DEPOSIT_AMOUNT", "amount": "", "method": ""}
     bot.send_message(chat_id, "💳 **Deposit Portal**\n\nPlease enter the amount you want to deposit (e.g., 100, 500):")
@@ -92,15 +92,12 @@ def show_deposit_methods(chat_id, amount):
 def handle_payment_method_selection(call):
     chat_id = call.message.chat.id
     selected_method = call.data.split("_")[1]
-    
     if chat_id in user_sessions and user_sessions[chat_id].get("state") == "AWAITING_DEPOSIT_METHOD":
         bot.answer_callback_query(call.id)
         user_sessions[chat_id]["method"] = selected_method
         user_sessions[chat_id]["state"] = "AWAITING_SMS_RECEIPT"
-        
         amount = user_sessions[chat_id]["amount"]
         method_info = PAYMENT_METHODS[selected_method]
-        
         instruction_msg = (
             f"📥 **የክፍያ መረጃ (Payment Details)**\n\n"
             f"እባክዎ የተመረጠውን መንገድ በመጠቀም **{amount} ETB** ይላኩ:\n\n"
@@ -110,8 +107,10 @@ def handle_payment_method_selection(call):
         )
         bot.send_message(chat_id, instruction_msg, parse_mode="Markdown")
 
-# --- BINGO GAME TIERS FLOW ---
+# --- BINGO GAME TIERS AND GRID OVERVIEW ---
+
 def start_bingo_flow(chat_id):
+    # Overrides any existing stuck state cleanly
     user_sessions[chat_id] = {"state": "SELECTING_STAKE"}
     
     markup = InlineKeyboardMarkup(row_width=2)
@@ -121,7 +120,7 @@ def start_bingo_flow(chat_id):
         InlineKeyboardButton("💵 Play 50", callback_data="stake_50"),
         InlineKeyboardButton("💵 Play 100", callback_data="stake_100")
     )
-    bot.send_message(chat_id, "🎱 **Play Bingo**\n\nPlease select your preferred stake entry value for this round:", reply_markup=markup)
+    bot.send_message(chat_id, "🎱 **Play Bingo — Select Your Stake**\n\nPlease select the entry fee level you want to play for this match round:", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('stake_'))
 def handle_stake_selection(call):
@@ -136,14 +135,15 @@ def handle_stake_selection(call):
         show_board_selection(chat_id, selected_stake)
 
 def show_board_selection(chat_id, stake):
+    # Displays the 3x2 Grid Layout for Board 1 up to Board 6
     markup = InlineKeyboardMarkup(row_width=3)
     buttons = [InlineKeyboardButton(f"📋 Board {i}", callback_data=f"board_{i}") for i in range(1, 7)]
     markup.add(*buttons)
     
     bot.send_message(
         chat_id, 
-        f"🎯 **Game Stake Fee Locked:** {stake} ETB\n\n"
-        "Please pick an available bingo game board card grid choice below to set up your ticket:", 
+        f"🎯 **Stake Confirmed:** {stake} ETB\n\n"
+        "Now, pick an available Grid Number option from the layout choices below to register your ticket:", 
         reply_markup=markup
     )
 
@@ -162,40 +162,38 @@ def handle_board_selection(call):
             f"💰 **Stake Entry:** {stake} ETB\n\n"
             "Waiting for remaining competitors to complete room entries. Automated host number calls updates will start up shortly!"
         )
-        del user_sessions[chat_id]
+        del user_sessions[chat_id] # Free up session
         bot.send_message(chat_id, success_msg, reply_markup=get_main_menu_markup(), parse_mode="Markdown")
 
-# --- GENERAL CONTROLLERS ---
+# --- GLOBAL TEXT INPUT ROUTER ---
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions)
 def handle_text_inputs(message):
     chat_id = message.chat.id
-    current_state = user_sessions[chat_id].get("state")
     user_input = message.text.strip()
 
+    # Bypasses the session blocker if the user typed an actual bot command
+    if user_input.startswith('/'):
+        return
+
+    current_state = user_sessions[chat_id].get("state")
+
     if current_state == "AWAITING_NAME":
-        if user_input.startswith('/'):
-            bot.send_message(chat_id, "❌ Invalid input. Enter your full name:")
-            return
         user_sessions[chat_id]["name"] = user_input
         user_sessions[chat_id]["state"] = "AWAITING_PHONE"
         phone_markup = ReplyKeyboardMarkup(row_width=1, resize_keyboard=True, one_time_keyboard=True)
         phone_markup.add(KeyboardButton(text="📱 Share Contact Number", request_contact=True))
         bot.send_message(chat_id, f"Thank you, **{user_input}**!\n\nTap below to share your phone number.", reply_markup=phone_markup, parse_mode="Markdown")
-
+        
     elif current_state == "AWAITING_DEPOSIT_AMOUNT":
         if not user_input.isdigit() or int(user_input) <= 0:
             bot.send_message(chat_id, "❌ እባክዎ ትክክለኛ የብር መጠን ቁጥር ብቻ ያስገቡ:")
             return
         user_sessions[chat_id]["amount"] = user_input
         show_deposit_methods(chat_id, user_input)
-
+        
     elif current_state == "AWAITING_SMS_RECEIPT":
-        if user_input.startswith('/'):
-            bot.send_message(chat_id, "❌ እባክዎ የባንክ የደረሰኝ የፅሁፍ መልዕክት እዚህ ላይ ይላኩ:")
-            return
         amount = user_sessions[chat_id]["amount"]
         method_name = PAYMENT_METHODS[user_sessions[chat_id]["method"]]["name"]
-        
         success_text = (
             "⏳ **ደረሰኝዎ በተሳካ ሁኔታ ቀርቧል!**\n\n"
             f"💰 **የገንዘብ መጠን:** {amount} ETB\n"
@@ -212,7 +210,6 @@ def handle_contact_sharing(message):
         phone_number = message.contact.phone_number
         saved_name = user_sessions[chat_id].get("name")
         del user_sessions[chat_id]
-        
         success_text = f"✅ **Registration Complete!**\n\n👤 **Name:** {saved_name}\n📞 **Phone:** {phone_number}"
         bot.send_message(chat_id, success_text, reply_markup=ReplyKeyboardRemove(), parse_mode="Markdown")
         bot.send_message(chat_id, "What would you like to do next?", reply_markup=get_main_menu_markup())
