@@ -9,10 +9,9 @@ BOT_TOKEN = os.getenv("BOT_TOKEN", "8522421089:AAHxRTZH-KdsaQc--11id3oSmLu3Xchs2
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # In-memory user session state tracking
-# States: 'AWAITING_NAME', 'AWAITING_PHONE', 'AWAITING_DEPOSIT_AMOUNT', 'AWAITING_DEPOSIT_METHOD', 'AWAITING_SMS_RECEIPT'
 user_sessions = {}
 
-# Real Payment Configurations provided by you
+# Your real payment account details
 PAYMENT_METHODS = {
     "telebirr": {"name": "Telebirr", "details": "📱 Telebirr: `0930919830`\n👤 Name: Amanuel Goytom"},
     "mpesa": {"name": "M-Pesa", "details": "📲 M-Pesa: `0721569830`\n👤 Name: Amanuel Goytom"},
@@ -67,15 +66,14 @@ def handle_intro_menu(call):
         invite_link = f"https://t.me/Hipgamesbot?start=ref_{chat_id}"
         bot.send_message(chat_id, f"👥 **Referral System**\n\nShare your link to earn bonuses:\n{invite_link}")
 
-# Step 1: Ask for Amount Immediately
+# 1. Ask for Amount First
 def start_deposit_flow(chat_id):
     user_sessions[chat_id] = {"state": "AWAITING_DEPOSIT_AMOUNT", "amount": "", "method": ""}
     bot.send_message(chat_id, "💳 **Deposit Portal**\n\nPlease enter the amount you want to deposit (e.g., 100, 500):")
 
-# Step 2: Amount Received -> Show Payment Methods Choices
+# 2. Show Payment options after amount is specified
 def show_deposit_methods(chat_id, amount):
     user_sessions[chat_id]["state"] = "AWAITING_DEPOSIT_METHOD"
-    
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
         InlineKeyboardButton("📱 Telebirr", callback_data="pay_telebirr"),
@@ -98,17 +96,16 @@ def handle_payment_method_selection(call):
         amount = user_sessions[chat_id]["amount"]
         method_info = PAYMENT_METHODS[selected_method]
         
-        # Step 3 & 4: Display info and detailed instructions in Amharic
+        # 3 & 4. Display designated numbers and Amharic instructions
         instruction_msg = (
             f"📥 **የክፍያ መረጃ (Payment Details)**\n\n"
             f"እባክዎ የተመረጠውን መንገድ በመጠቀም **{amount} ETB** ይላኩ:\n\n"
             f"{method_info['details']}\n\n"
             f"⚠️ **ቀጣይ መመሪያ (Instructions):**\n"
-            f"ብር ካስተላለፉ በኋላ ከባንክ የደረሰዎትን **የማረጋገጫ አጭር የፅሁፍ መልዕክት (SMS SMS text)** ሙሉ በሙሉ ኮፒ (Copy) በማድረግ እዚህ የመልዕክት ማስገቢያ ቦታ ላይ ፔስት (Paste) አድርገው ይላኩት።"
+            f"ብር ካስተላለፉ በኋላ ከባንክ የደረሰዎትን **የማረጋገጫ አጭር የፅሁፍ መልዕክት (SMS)** ሙሉ በሙሉ ኮፒ (Copy) በማድረግ እዚህ የመልዕክት ማስገቢያ ቦታ ላይ ፔስት (Paste) አድርገው ይላኩት።"
         )
         bot.send_message(chat_id, instruction_msg, parse_mode="Markdown")
 
-# Handle text inputs for state sequences
 @bot.message_handler(func=lambda message: message.chat.id in user_sessions)
 def handle_text_inputs(message):
     chat_id = message.chat.id
@@ -125,7 +122,7 @@ def handle_text_inputs(message):
         phone_markup.add(KeyboardButton(text="📱 Share Contact Number", request_contact=True))
         bot.send_message(chat_id, f"Thank you, **{user_input}**!\n\nTap below to share your phone number.", reply_markup=phone_markup, parse_mode="Markdown")
 
-    # Step 1 Validation: Check amount number entry
+    # Capture Amount input
     elif current_state == "AWAITING_DEPOSIT_AMOUNT":
         if not user_input.isdigit() or int(user_input) <= 0:
             bot.send_message(chat_id, "❌ እባክዎ ትክክለኛ የብር መጠን ቁጥር ብቻ ያስገቡ (Please enter a valid amount number):")
@@ -133,7 +130,7 @@ def handle_text_inputs(message):
         user_sessions[chat_id]["amount"] = user_input
         show_deposit_methods(chat_id, user_input)
 
-    # Step 4 Processing: Handle SMS confirmation paste receipt submission
+    # Capture Pasted SMS Receipt
     elif current_state == "AWAITING_SMS_RECEIPT":
         if user_input.startswith('/'):
             bot.send_message(chat_id, "❌ እባክዎ የባንክ የደረሰኝ የፅሁፍ መልዕክት እዚህ ላይ ይላኩ (Please paste the transaction SMS):")
