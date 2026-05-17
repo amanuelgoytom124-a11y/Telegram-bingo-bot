@@ -5,7 +5,7 @@ from flask import Flask
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 app = Flask(__name__)
-BOT_TOKEN = os.getenv("BOT_TOKEN", "7901007823:AAElbZ5f7G7bXbZf_z8vX-7X2y4Z5t7W3XQ")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8522421089:AAHxRTZH-KdsaQc--11id3oSmLu3Xchs2WM")
 bot = telebot.TeleBot(BOT_TOKEN)
 
 @app.route('/')
