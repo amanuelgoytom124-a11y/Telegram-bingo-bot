@@ -5,7 +5,7 @@ from flask import Flask
 from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardMarkup, KeyboardButton, ReplyKeyboardRemove
 
 app = Flask(__name__)
-BOT_TOKEN = os.getenv("BOT_TOKEN", "8522421089:AAHxRTZH-KdsaQc--11id3oSmLu3Xchs2WM")
+BOT_TOKEN = os.getenv("BOT_TOKEN", "7901007823:AAE1bZ5f7G7bXbZf_z8vX-7X2y4Z5t7W3XQ")
 bot = telebot.TeleBot(BOT_TOKEN)
 
 # In-memory user session state tracking
@@ -49,7 +49,7 @@ def send_welcome(message):
 def deposit_command_handler(message):
     start_deposit_flow(message.chat.id)
 
-@bot.message_handler(commands=['bingo'])
+@bot.message_handler(commands=['bingo', 'play'])
 def bingo_command_handler(message):
     start_bingo_flow(message.chat.id)
 
@@ -116,12 +116,12 @@ def start_bingo_flow(chat_id):
     
     markup = InlineKeyboardMarkup(row_width=2)
     markup.add(
-        InlineKeyboardButton("💵 Play 10 ETB", callback_data="stake_10"),
-        InlineKeyboardButton("💵 Play 20 ETB", callback_data="stake_20"),
-        InlineKeyboardButton("💵 Play 50 ETB", callback_data="stake_50"),
-        InlineKeyboardButton("💵 Play 100 ETB", callback_data="stake_100")
+        InlineKeyboardButton("💵 Play 10", callback_data="stake_10"),
+        InlineKeyboardButton("💵 Play 20", callback_data="stake_20"),
+        InlineKeyboardButton("💵 Play 50", callback_data="stake_50"),
+        InlineKeyboardButton("💵 Play 100", callback_data="stake_100")
     )
-    bot.send_message(chat_id, "🎱 **Play Bingo**\n\nPlease select your entry stake preference for this round:", reply_markup=markup)
+    bot.send_message(chat_id, "🎱 **Play Bingo**\n\nPlease select your preferred stake entry value for this round:", reply_markup=markup)
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('stake_'))
 def handle_stake_selection(call):
@@ -133,19 +133,17 @@ def handle_stake_selection(call):
         user_sessions[chat_id]["stake"] = selected_stake
         user_sessions[chat_id]["state"] = "SELECTING_BOARD"
         
-        # Show your custom Bingo Board layout from yesterday
         show_board_selection(chat_id, selected_stake)
 
 def show_board_selection(chat_id, stake):
     markup = InlineKeyboardMarkup(row_width=3)
-    # Creating boards 1 through 6
     buttons = [InlineKeyboardButton(f"📋 Board {i}", callback_data=f"board_{i}") for i in range(1, 7)]
     markup.add(*buttons)
     
     bot.send_message(
         chat_id, 
-        f"🎯 **Game Stake Selected:** {stake} ETB\n\n"
-        "Now, pick an available game board grid card layout below to place your entry ticket:", 
+        f"🎯 **Game Stake Fee Locked:** {stake} ETB\n\n"
+        "Please pick an available bingo game board card grid choice below to set up your ticket:", 
         reply_markup=markup
     )
 
@@ -159,10 +157,10 @@ def handle_board_selection(call):
         stake = user_sessions[chat_id].get("stake")
         
         success_msg = (
-            f"🎮 **Game Entry Locked In!**\n\n"
+            f"🎮 **Game Entry Registration Setup Complete!**\n\n"
             f"🎟️ **Card:** Board {board_num}\n"
-            f"💰 **Stake Fee:** {stake} ETB\n\n"
-            "Waiting for other players to fill up the room grid. The automated host numbers draw will pop up live as soon as the session fills!"
+            f"💰 **Stake Entry:** {stake} ETB\n\n"
+            "Waiting for remaining competitors to complete room entries. Automated host number calls updates will start up shortly!"
         )
         del user_sessions[chat_id]
         bot.send_message(chat_id, success_msg, reply_markup=get_main_menu_markup(), parse_mode="Markdown")
